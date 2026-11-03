@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calendario</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f6f4ef">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Calendario">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{
+    --bg:#f6f4ef; --card:#ffffff; --ink:#2b2a28; --muted:#7c7871; --line:#e7e3da;
+    --accent:#5f7f68; --accent-soft:#e6eee7; --warn:#b7791f; --warn-soft:#fbf1df;
+    --low:#8a6fb0; --low-soft:#efe9f6; --danger:#a64b4b;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  body{min-height:100vh;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .wrap{max-width:560px;margin:0 auto;padding:16px}
+  h1{font-size:22px;margin:8px 0 4px;font-weight:650;letter-spacing:-.01em}
+  h2{font-size:17px;margin:0 0 10px;font-weight:650}
+  p{line-height:1.45}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:12px 0}
+  .hidden{display:none !important}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
+  input,select,textarea{width:100%;font:inherit;font-size:16px;padding:12px;border:1px solid var(--line);
+    border-radius:12px;background:#fff;color:var(--ink)}
+  textarea{resize:vertical;min-height:84px}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+  button{font:inherit;font-size:15px;border:0;border-radius:12px;padding:12px 16px;cursor:pointer;
+    background:var(--accent);color:#fff;font-weight:600}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  button.link{background:none;color:var(--muted);padding:6px;font-weight:500;text-decoration:underline}
+  button.danger{background:transparent;color:var(--danger);border:1px solid #ecd2d2}
+  button:disabled{opacity:.5}
+  .full{width:100%}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{flex:1;background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:500;padding:10px 8px}
+  .seg button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:650}
+
+  /* lock */
+  .lock{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+  .lock img{width:72px;height:72px;border-radius:18px;margin-bottom:12px}
+  .lock form{width:100%;max-width:320px}
+  .err{color:var(--danger);font-size:14px;min-height:20px;margin-top:8px}
+
+  /* top date nav */
+  .datenav{display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px}
+  .datenav button{background:#fff;color:var(--ink);border:1px solid var(--line);width:40px;height:40px;padding:0;font-size:18px}
+  .datenav .d{text-align:center}
+  .datenav .d b{display:block;font-size:17px}
+  #dayLabel{text-transform:capitalize}
+
+  /* ring */
+  .ringbox{display:flex;align-items:center;gap:18px}
+  .ring{position:relative;width:128px;height:128px;flex:none}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .c b{font-size:26px;letter-spacing:-.02em}
+  .stats div{margin:4px 0;font-size:15px}
+  .stats b{font-variant-numeric:tabular-nums}
+
+  /* meals */
+  .meal{border-top:1px solid var(--line);padding:12px 0}
+  .meal:first-child{border-top:0;padding-top:0}
+  .meal-h{display:flex;justify-content:space-between;font-weight:650;margin-bottom:4px}
+  .meal-h span:first-child{text-transform:capitalize}
+  .item{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:15px}
+  .item .n{flex:1}
+  .item .n span.q{display:block;font-size:12px;color:var(--muted)}
+  .item .k{font-variant-numeric:tabular-nums;font-weight:600;cursor:pointer;border-bottom:1px dashed var(--line)}
+  .item .x{background:none;color:var(--muted);padding:4px 8px;font-size:18px;font-weight:400}
+  .tag{display:inline-block;font-size:11px;padding:2px 6px;border-radius:6px;background:var(--warn-soft);color:var(--warn);margin-left:6px;vertical-align:middle}
+
+  /* week chart */
+  .bars{display:flex;align-items:flex-end;gap:8px;height:150px;position:relative;margin:10px 0 4px;padding-top:8px}
+  .bars .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+  .bars .b i{display:block;width:100%;max-width:36px;border-radius:8px 8px 4px 4px;background:var(--accent)}
+  .bars .b i.over{background:var(--warn)}
+  .bars .b i.under{background:var(--low)}
+  .bars .b i.empty{background:var(--line)}
+  .bars .tl{position:absolute;left:0;right:0;border-top:2px dashed #b9b4aa}
+  .days{display:flex;gap:8px}
+  .days span{flex:1;text-align:center;font-size:12px;color:var(--muted);text-transform:capitalize}
+  .tips li{margin:6px 0;line-height:1.45}
+  .note{border-radius:12px;padding:12px;margin:10px 0;font-size:15px;line-height:1.45}
+  .note.ok{background:var(--accent-soft)}
+  .note.warn{background:var(--warn-soft)}
+  .note.low{background:var(--low-soft)}
+
+  /* tabs */
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);
+    border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
+  nav.tabs button{flex:1;max-width:180px;background:none;color:var(--muted);border-radius:0;padding:12px 4px 14px;font-weight:550;font-size:13px}
+  nav.tabs button svg{display:block;margin:0 auto 4px;width:22px;height:22px}
+  nav.tabs button.on{color:var(--accent)}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-3px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ================= LOCK ================= -->
+<section id="lock" class="lock hidden">
+  <img src="icon-180.png" alt="">
+  <h1>Calendario</h1>
+  <p class="muted small" id="lockMsg">Ingresá tu clave</p>
+  <form id="lockForm" autocomplete="off">
+    <input type="password" id="pass1" placeholder="Clave" inputmode="text" autocomplete="current-password">
+    <input type="password" id="pass2" class="hidden" placeholder="Repetí la clave" style="margin-top:10px">
+    <button class="full" style="margin-top:12px" id="lockBtn">Entrar</button>
+    <div class="err" id="lockErr"></div>
+  </form>
+  <button class="link small" id="forgotBtn">Olvidé la clave</button>
+</section>
+
+<!-- ================= SETUP ================= -->
+<section id="setup" class="wrap hidden">
+  <h1 id="setupTitle">Configuración inicial</h1>
+  <p class="muted small">Con estos datos calculamos una estimación de las calorías que necesitás por día.</p>
+  <div class="card">
+    <label>Sexo</label>
+    <div class="seg" id="sexSeg">
+      <button type="button" data-v="f">Mujer</button>
+      <button type="button" data-v="m">Hombre</button>
+    </div>
+    <div class="row">
+      <div><label>Edad</label><input id="age" type="number" inputmode="numeric" min="12" max="100" placeholder="años"></div>
+      <div><label>Altura (cm)</label><input id="height" type="number" inputmode="numeric" min="120" max="230" placeholder="cm"></div>
+      <div><label>Peso (kg)</label><input id="weight" type="number" inputmode="decimal" step="0.1" min="30" max="300" placeholder="kg"></div>
+    </div>
+    <label>Actividad física habitual</label>
+    <select id="activity">
+      <option value="1.2">Poca o nada (trabajo sentado)</option>
+      <option value="1.375">Liviana (1 a 3 días por semana)</option>
+      <option value="1.55">Moderada (3 a 5 días por semana)</option>
+      <option value="1.725">Alta (6 a 7 días por semana)</option>
+    </select>
+    <label>Objetivo</label>
+    <div class="seg" id="goalSeg">
+      <button type="button" data-v="maintain">Mantener peso</button>
+      <button type="button" data-v="lose">Bajar de peso</button>
+    </div>
+    <div id="goalNote" class="note warn hidden"></div>
+  </div>
+  <div class="card" id="resultCard">
+    <h2>Tu objetivo diario</h2>
+    <div id="resultText" class="muted">Completá los datos para ver el cálculo.</div>
+  </div>
+  <button class="full" id="saveSetup">Guardar</button>
+  <button class="link full" id="cancelSetup">Cancelar</button>
+</section>
+
+<!-- ================= APP ================= -->
+<section id="app" class="hidden">
+  <!-- HOY -->
+  <div id="tab-day" class="wrap">
+    <div class="datenav">
+      <button id="prevDay" aria-label="Día anterior">‹</button>
+      <div class="d"><b id="dayLabel"></b><span class="muted small" id="daySub"></span></div>
+      <button id="nextDay" aria-label="Día siguiente">›</button>
+    </div>
+
+    <div class="card">
+      <div class="ringbox">
+        <div class="ring">
+          <svg width="128" height="128" viewBox="0 0 128 128">
+            <circle cx="64" cy="64" r="54" fill="none" stroke="#eeeae2" stroke-width="12"/>
+            <circle id="ringArc" cx="64" cy="64" r="54" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="339.3"/>
+          </svg>
+          <div class="c"><b id="ringNum">0</b><span class="muted small">kcal</span></div>
+        </div>
+        <div class="stats">
+          <div>Objetivo: <b id="stTarget">–</b></div>
+          <div id="stLeftRow">Te quedan: <b id="stLeft">–</b></div>
+          <div class="muted small" id="stMacros"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>¿Qué comiste?</h2>
+      <textarea id="foodText" placeholder="Ej: almorcé dos galletas de arroz con dos huevos y una manzana"></textarea>
+      <button class="full" id="addBtn" style="margin-top:10px">Anotar</button>
+      <div class="err" id="addErr"></div>
+    </div>
+
+    <div class="card" id="mealsCard">
+      <div id="meals"></div>
+      <p class="muted small" id="noMeals">Todavía no anotaste nada este día.</p>
+    </div>
+    <p class="muted small" style="text-align:center">Tocá las calorías de un alimento para corregirlas.</p>
+  </div>
+
+  <!-- SEMANA -->
+  <div id="tab-week" class="wrap hidden">
+    <div class="datenav">
+      <button id="prevWeek" aria-label="Semana anterior">‹</button>
+      <div class="d"><b id="weekLabel"></b><span class="muted small">Resumen semanal</span></div>
+      <button id="nextWeek" aria-label="Semana siguiente">›</button>
+    </div>
+    <div class="card">
+      <div class="bars" id="bars"></div>
+      <div class="days" id="barDays"></div>
+      <p class="muted small" style="margin-bottom:0">La línea punteada es tu objetivo diario.</p>
+    </div>
+    <div class="card">
+      <h2>Cómo viene la semana</h2>
+      <div id="weekStats"></div>
+      <div id="weekNotes"></div>
+    </div>
+    <div class="card">
+      <h2>Sugerencias</h2>
+      <div id="aiTips" class="muted small">Pedí sugerencias personalizadas según lo que comiste esta semana.</div>
+      <button class="full ghost" id="tipsBtn" style="margin-top:10px">Pedir sugerencias</button>
+    </div>
+  </div>
+
+  <!-- AJUSTES -->
+  <div id="tab-settings" class="wrap hidden">
+    <h1>Ajustes</h1>
+    <div class="card">
+      <h2>Mis datos</h2>
+      <div id="profileSummary" class="muted"></div>
+      <button class="ghost full" id="editProfile" style="margin-top:12px">Editar datos y objetivo</button>
+    </div>
+    <div class="card">
+      <h2>Reconocimiento de comidas</h2>
+      <p class="muted small">Para entender cualquier comida escrita, la página usa Gemini de Google con una clave gratuita. Sin clave funciona igual, pero solo reconoce una lista básica de alimentos.</p>
+      <label>Clave de Gemini</label>
+      <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off">
+      <div class="row" style="margin-top:10px">
+        <button class="ghost" id="testKey">Probar</button>
+        <button id="saveKey">Guardar</button>
+      </div>
+      <div class="small" id="keyMsg" style="margin-top:8px"></div>
+      <p class="small"><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Conseguir una clave gratis</a></p>
+    </div>
+    <div class="card">
+      <h2>Clave de ingreso</h2>
+      <button class="ghost full" id="changePass">Cambiar clave</button>
+      <button class="ghost full" id="lockNow" style="margin-top:8px">Bloquear ahora</button>
+    </div>
+    <div class="card">
+      <h2>Copia de seguridad</h2>
+      <p class="muted small">Todo se guarda solo en este dispositivo. Bajate una copia de vez en cuando, o usala para pasar tus datos a otro celular.</p>
+      <div class="row">
+        <button class="ghost" id="exportBtn">Descargar copia</button>
+        <button class="ghost" id="importBtn">Cargar copia</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" class="hidden">
+    </div>
+    <div class="card">
+      <button class="danger full" id="wipeBtn">Borrar todos los datos</button>
+    </div>
+    <p class="muted small" style="text-align:center">Las calorías son estimaciones aproximadas y no reemplazan la consulta con un profesional de la salud.</p>
+  </div>
+
+  <nav class="tabs">
+    <button data-tab="day" class="on">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Día</button>
+    <button data-tab="week">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/></svg>Semana</button>
+    <button data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>Ajustes</button>
+  </nav>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
