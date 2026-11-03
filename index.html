@@ -103,7 +103,17 @@
   /* tabs */
   nav.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);
     border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
-  nav.tabs button{flex:1;max-width:180px;background:none;color:var(--muted);border-radius:0;padding:12px 4px 14px;font-weight:550;font-size:13px}
+  nav.tabs button{flex:1;max-width:140px;background:none;color:var(--muted);border-radius:0;padding:10px 2px 12px;font-weight:550;font-size:12px}
+  .prog{height:12px;border-radius:8px;background:#eeeae2;overflow:hidden;margin:12px 0 8px}
+  .prog i{display:block;height:100%;background:var(--accent);border-radius:8px}
+  .big{font-size:28px;font-weight:700;letter-spacing:-.02em}
+  .wk{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:15px}
+  .wk:first-child{border-top:0}
+  .wk > span:first-child{text-transform:capitalize}
+  .wk.today > span:first-child{font-weight:650}
+  .row2{display:flex;gap:10px;margin-top:10px}
+  .row2>*{flex:1}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
   nav.tabs button svg{display:block;margin:0 auto 4px;width:22px;height:22px}
   nav.tabs button.on{color:var(--accent)}
   .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-3px;margin-right:6px}
@@ -141,17 +151,23 @@
       <div><label>Altura (cm)</label><input id="height" type="number" inputmode="numeric" min="120" max="230" placeholder="cm"></div>
       <div><label>Peso (kg)</label><input id="weight" type="number" inputmode="decimal" step="0.1" min="30" max="300" placeholder="kg"></div>
     </div>
-    <label>Actividad física habitual</label>
+    <label>Actividad en tu día a día</label>
     <select id="activity">
       <option value="1.2">Poca o nada (trabajo sentado)</option>
       <option value="1.375">Liviana (1 a 3 días por semana)</option>
       <option value="1.55">Moderada (3 a 5 días por semana)</option>
       <option value="1.725">Alta (6 a 7 días por semana)</option>
     </select>
+    <div class="hint">Si vas a anotar tu ejercicio en la sección Ejercicio, elegí "Poca o nada" o "Liviana" según cuánto te movés sin contar el entrenamiento. Así no se cuenta dos veces.</div>
     <label>Objetivo</label>
     <div class="seg" id="goalSeg">
       <button type="button" data-v="maintain">Mantener peso</button>
       <button type="button" data-v="lose">Bajar de peso</button>
+    </div>
+    <div id="goalWeightBox" class="hidden">
+      <label>Peso al que querés llegar (kg)</label>
+      <input id="goalWeight" type="number" inputmode="decimal" step="0.1" min="30" max="300" placeholder="kg">
+      <div class="hint" id="goalWeightHint"></div>
     </div>
     <div id="goalNote" class="note warn hidden"></div>
   </div>
@@ -185,6 +201,7 @@
         <div class="stats">
           <div>Objetivo: <b id="stTarget">–</b></div>
           <div id="stLeftRow">Te quedan: <b id="stLeft">–</b></div>
+          <div id="stEx" class="small"></div>
           <div class="muted small" id="stMacros"></div>
         </div>
       </div>
@@ -202,6 +219,52 @@
       <p class="muted small" id="noMeals">Todavía no anotaste nada este día.</p>
     </div>
     <p class="muted small" style="text-align:center">Tocá las calorías de un alimento para corregirlas.</p>
+  </div>
+
+  <!-- EJERCICIO -->
+  <div id="tab-ex" class="wrap hidden">
+    <div class="datenav">
+      <button id="prevEx" aria-label="Día anterior">‹</button>
+      <div class="d"><b id="exLabel" style="text-transform:capitalize"></b><span class="muted small" id="exSub"></span></div>
+      <button id="nextEx" aria-label="Día siguiente">›</button>
+    </div>
+    <div class="card">
+      <h2>¿Qué ejercicio hiciste?</h2>
+      <textarea id="exText" placeholder="Ej: 30 min de cinta a 6 km/h, 3 series de 15 sentadillas y 3x12 estocadas"></textarea>
+      <button class="full" id="exAddBtn" style="margin-top:10px">Anotar</button>
+      <button class="ghost full" id="exNoneBtn" style="margin-top:8px">No hice ejercicio este día</button>
+      <div class="err" id="exErr"></div>
+    </div>
+    <div class="card">
+      <div class="meal-h"><span style="text-transform:none">Ejercicio del día</span><span id="exTotal"></span></div>
+      <div id="exList"></div>
+      <p class="muted small" id="exEmpty">Todavía no anotaste nada este día.</p>
+    </div>
+    <div class="card">
+      <h2>Esta semana</h2>
+      <div id="exWeek"></div>
+      <p class="muted small" id="exWeekSum" style="margin-bottom:0"></p>
+    </div>
+    <p class="muted small" style="text-align:center">Las calorías quemadas son aproximadas. Tocá un número para corregirlo.</p>
+  </div>
+
+  <!-- PROGRESO -->
+  <div id="tab-prog" class="wrap hidden">
+    <h1>Progreso</h1>
+    <div class="card" id="progGoalCard"></div>
+    <div class="card">
+      <h2>Registrar peso</h2>
+      <div class="row2">
+        <input id="wInput" type="number" inputmode="decimal" step="0.1" placeholder="Peso de hoy (kg)">
+        <button id="wSave" style="flex:none">Guardar</button>
+      </div>
+      <div class="hint">Lo ideal es pesarse una vez por semana, el mismo día y a la misma hora. El peso varía bastante de un día a otro y eso no significa nada.</div>
+      <div id="wHist" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2>A este ritmo</h2>
+      <div id="projection"></div>
+    </div>
   </div>
 
   <!-- SEMANA -->
@@ -271,8 +334,12 @@
   <nav class="tabs">
     <button data-tab="day" class="on">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Día</button>
+    <button data-tab="ex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>Ejercicio</button>
     <button data-tab="week">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/></svg>Semana</button>
+    <button data-tab="prog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-5 4 3 7-8"/><path d="M15 7h5v5"/></svg>Progreso</button>
     <button data-tab="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>Ajustes</button>
   </nav>
