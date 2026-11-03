@@ -6,7 +6,7 @@
 // ---------- utilidades ----------
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const K = { pass:'cal_pass', profile:'cal_profile', days:'cal_days', key:'cal_gkey', tips:'cal_tips', ex:'cal_ex', weights:'cal_weights' };
+const K = { pass:'cal_pass', profile:'cal_profile', days:'cal_days', key:'cal_gkey', tips:'cal_tips', ex:'cal_ex', weights:'cal_weights', favs:'cal_favs' };
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { alert('No se pudo guardar: ' + e.message); } };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -365,6 +365,7 @@ $('#meals').addEventListener('click', e => {
   const list = getDay(curDay);
   const entry = list.find(x => x.id === eid); if (!entry) return;
   const item = entry.items.find(x => x.id === iid); if (!item) return;
+  if (e.target.closest('.st')) { toggleFav(item); renderDay(); return; }
   if (e.target.closest('.x')) {
     if (!confirm(`¿Borrar "${item.name}"?`)) return;
     entry.items = entry.items.filter(x => x.id !== iid);
@@ -412,11 +413,52 @@ function renderDay() {
     return `<div class="meal"><div class="meal-h"><span>${esc(m)}</span><span>${fmt(sum)} kcal</span></div>` +
       entries.map(e => e.items.map(i => `<div class="item" data-item="${e.id}|${i.id}">
         <div class="n">${esc(i.name)}${i.est ? '<span class="tag">aprox.</span>' : ''}<span class="q">${esc(i.qty)}</span></div>
+        <button class="st${isFav(i) ? ' on' : ''}" aria-label="Favorito">${isFav(i) ? '★' : '☆'}</button>
         <div class="k">${fmt(i.kcal)}</div><button class="x" aria-label="Borrar">×</button></div>`).join('')).join('') +
       '</div>';
   }).join('');
   $('#noMeals').classList.toggle('hidden', list.length > 0);
+  renderFavs();
 }
+
+// ---------- favoritos ----------
+const favKey = i => (i.name + '|' + (i.qty || '')).toLowerCase().trim();
+function isFav(i) { return load(K.favs, []).some(f => favKey(f) === favKey(i)); }
+function toggleFav(i) {
+  let favs = load(K.favs, []);
+  if (isFav(i)) favs = favs.filter(f => favKey(f) !== favKey(i));
+  else favs.push({ id: uid(), name: i.name, qty: i.qty || '', kcal: i.kcal, p: i.p || 0, c: i.c || 0, f: i.f || 0 });
+  save(K.favs, favs);
+}
+let favEditing = false, favMealTouched = false;
+$('#favMeal').addEventListener('change', () => { favMealTouched = true; });
+function renderFavs() {
+  const favs = load(K.favs, []);
+  if (!favMealTouched) $('#favMeal').value = guessMeal('');
+  $('#favChips').innerHTML = favs.map(f => `<button class="chip" type="button" data-fav="${f.id}">
+    ${favEditing ? '<span class="del">×</span>' : '+'} ${esc(f.name)}${f.qty ? ` <small>${esc(f.qty)}</small>` : ''} <small>${fmt(f.kcal)}</small></button>`).join('');
+  $('#favHint').classList.toggle('hidden', favs.length > 0);
+  $('#favEdit').classList.toggle('hidden', !favs.length);
+  $('#favMeal').classList.toggle('hidden', !favs.length || favEditing);
+  $('#favEdit').textContent = favEditing ? 'Listo' : 'Editar';
+}
+$('#favEdit').addEventListener('click', () => { favEditing = !favEditing; renderFavs(); });
+$('#favChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-fav]'); if (!b) return;
+  const favs = load(K.favs, []); const f = favs.find(x => x.id === b.dataset.fav); if (!f) return;
+  if (favEditing) {
+    if (!confirm(`¿Quitar "${f.name}" de favoritos?`)) return;
+    save(K.favs, favs.filter(x => x.id !== f.id)); renderFavs(); return;
+  }
+  const meal = $('#favMeal').value;
+  const list = getDay(curDay);
+  const item = { id: uid(), name: f.name, qty: f.qty, kcal: f.kcal, p: f.p, c: f.c, f: f.f };
+  const last = list[list.length - 1];
+  if (last && last.meal === meal && last.fav) last.items.push(item);
+  else list.push({ id: uid(), meal, text: f.name, items: [item], at: Date.now(), fav: true });
+  setDay(curDay, list);
+  renderDay();
+});
 $('#prevDay').addEventListener('click', () => { curDay = addDays(curDay, -1); renderDay(); });
 $('#nextDay').addEventListener('click', () => { if (curDay < today()) { curDay = addDays(curDay, 1); renderDay(); } });
 
@@ -794,7 +836,7 @@ $('#testKey').addEventListener('click', async () => {
 $('#changePass').addEventListener('click', () => showLock('change'));
 $('#lockNow').addEventListener('click', () => { sessionStorage.removeItem('cal_ok'); showLock('enter'); });
 $('#exportBtn').addEventListener('click', () => {
-  const data = { v: 2, profile: load(K.profile), days: load(K.days, {}), tips: load(K.tips, {}), ex: load(K.ex, {}), weights: load(K.weights, {}) };
+  const data = { v: 2, profile: load(K.profile), days: load(K.days, {}), tips: load(K.tips, {}), ex: load(K.ex, {}), weights: load(K.weights, {}), favs: load(K.favs, []) };
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
   a.download = `calendario-${today()}.json`; a.click();
@@ -807,7 +849,7 @@ $('#importFile').addEventListener('change', async e => {
     if (!data.days) throw new Error();
     if (!confirm('Esto reemplaza los datos actuales por los de la copia. ¿Seguir?')) return;
     if (data.profile) save(K.profile, data.profile);
-    save(K.days, data.days); save(K.tips, data.tips || {}); save(K.ex, data.ex || {}); save(K.weights, data.weights || {});
+    save(K.days, data.days); save(K.tips, data.tips || {}); save(K.ex, data.ex || {}); save(K.weights, data.weights || {}); if (data.favs) save(K.favs, data.favs);
     alert('Copia cargada.'); start();
   } catch { alert('El archivo no es una copia válida.'); }
   e.target.value = '';
